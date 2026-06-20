@@ -12,10 +12,13 @@ const REPO_ROOT = resolve(__dirname, '..');
 const DATA_PATH = resolve(REPO_ROOT, 'data', 'catechism.json');
 
 const ESV_API_KEY = process.env.ESV_API_KEY;
-if (!ESV_API_KEY) {
-  console.error('Error: ESV_API_KEY environment variable is not set.');
-  console.error('Get a free key at https://api.esv.org and then run:');
-  console.error('  ESV_API_KEY=your_key_here node scripts/fetch-verses.js');
+if (!ESV_API_KEY || !ESV_API_KEY.trim()) {
+  process.stderr.write(
+    'Error: ESV_API_KEY is not set or is empty.\n' +
+    'Set it before running:\n' +
+    '  ESV_API_KEY=your_key_here node scripts/fetch-verses.js\n' +
+    'Get a free key at https://api.esv.org\n'
+  );
   process.exit(1);
 }
 
@@ -104,9 +107,27 @@ async function fetchPassage(displayRange) {
   const response = await fetch(url, {
     headers: { Authorization: `Token ${ESV_API_KEY}` },
   });
+
   if (!response.ok) {
-    throw new Error(`ESV API returned ${response.status} for "${displayRange}"`);
+    // Collect all response headers for egress/proxy deny-reason detection.
+    const headers = {};
+    for (const [k, v] of response.headers.entries()) headers[k] = v;
+
+    // Read the body — could be JSON error, HTML proxy page, or plain text.
+    const body = await response.text().catch(() => '(could not read body)');
+
+    // Emit the full diagnostic to stderr.
+    process.stderr.write(
+      `\n--- ESV API failure for "${displayRange}" ---\n` +
+      `HTTP status: ${response.status} ${response.statusText}\n` +
+      `Headers: ${JSON.stringify(headers, null, 2)}\n` +
+      `Body:\n${body}\n` +
+      `--- end ---\n\n`
+    );
+
+    throw new Error(`ESV API returned ${response.status} for "${displayRange}" (see diagnostics above)`);
   }
+
   const data = await response.json();
   const text = ((data.passages && data.passages[0]) || '').trim();
   if (!text) {
@@ -185,6 +206,7 @@ async function main() {
     console.log('All passages already populated. Run with --force to re-fetch.\n');
   } else {
     console.log(`Fetching ${toFetch.length} of ${uniqueRanges.length} unique ranges …\n`);
+    let fetchFailed = false;
     for (const range of toFetch) {
       process.stdout.write(`  Fetching "${range}" … `);
       try {
@@ -196,8 +218,14 @@ async function main() {
         console.log('done');
       } catch (err) {
         console.log(`FAILED: ${err.message}`);
+        fetchFailed = true;
       }
       await new Promise(r => setTimeout(r, 200));
+    }
+
+    if (fetchFailed) {
+      process.stderr.write('\nOne or more fetches failed. catechism.json was NOT updated.\n');
+      process.exit(1);
     }
   }
 
