@@ -64,11 +64,13 @@ function route() {
   const hash = location.hash;
   if (!hash || hash === '#') {
     renderLanding();
-  } else {
-    const m = hash.match(/^#ld-(\d+)$/);
-    if (m) renderLordsDay(parseInt(m[1], 10));
-    else renderLanding();
+    return;
   }
+  const mDeep = hash.match(/^#ld-(\d+)-q(\d+)$/);
+  if (mDeep) { renderLordsDay(parseInt(mDeep[1], 10), parseInt(mDeep[2], 10)); return; }
+  const m = hash.match(/^#ld-(\d+)$/);
+  if (m) { renderLordsDay(parseInt(m[1], 10), null); return; }
+  renderLanding();
 }
 
 // ---------- Landing ----------
@@ -114,7 +116,7 @@ function renderLanding() {
 
 // ---------- Lord's Day view ----------
 
-function renderLordsDay(n) {
+function renderLordsDay(n, targetQ = null) {
   const records = catechismData.filter(r => r.lordsDay === n);
   const app = document.getElementById('app');
   app.innerHTML = '';
@@ -144,12 +146,25 @@ function renderLordsDay(n) {
     }
   }
 
+  // Pre-expand the target Q&A's verses section before building the card.
+  if (targetQ !== null) {
+    getCardState(targetQ).versesShown = true;
+  }
+
   for (const record of records) {
     app.appendChild(buildQuestionCard(record, firstSeen));
   }
 
   const dq = buildDiscussionQuestions(n);
   if (dq) app.appendChild(dq);
+
+  // Scroll to the target Q&A after the DOM is painted.
+  if (targetQ !== null) {
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`.qa-card[data-q="${targetQ}"]`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 }
 
 // ---------- Question card ----------
@@ -187,7 +202,15 @@ function buildQuestionCard(record, firstSeen) {
 
     const toggleBtn = document.createElement('button');
     toggleBtn.className = 'group-toggle';
-    toggleBtn.textContent = `${group.label} ${groupOpen ? '▾' : '▸'}`;
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'group-label';
+    labelSpan.textContent = group.label;
+    const arrowSpan = document.createElement('span');
+    arrowSpan.className = 'group-arrow';
+    arrowSpan.setAttribute('aria-hidden', 'true');
+    arrowSpan.textContent = groupOpen ? ' ▾' : ' ▸';
+    toggleBtn.appendChild(labelSpan);
+    toggleBtn.appendChild(arrowSpan);
     toggleBtn.setAttribute('aria-expanded', String(groupOpen));
 
     const groupContent = document.createElement('div');
@@ -240,7 +263,7 @@ function buildQuestionCard(record, firstSeen) {
     toggleBtn.addEventListener('click', () => {
       const nowOpen = groupContent.hidden;
       groupContent.hidden = !nowOpen;
-      toggleBtn.textContent = `${group.label} ${nowOpen ? '▾' : '▸'}`;
+      arrowSpan.textContent = nowOpen ? ' ▾' : ' ▸';
       toggleBtn.setAttribute('aria-expanded', String(nowOpen));
       getCardState(record.qNumber).groupsShown[i] = nowOpen;
     });
@@ -317,7 +340,7 @@ function buildCitation(citation, currentQ, firstSeen) {
   } else {
     const ph = document.createElement('span');
     ph.className = 'placeholder-text';
-    ph.textContent = '[Scripture text not yet fetched — run scripts/fetch-verses.js]';
+    ph.textContent = '[Scripture text unavailable]';
     bq.appendChild(ph);
   }
 

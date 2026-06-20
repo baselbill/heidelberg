@@ -320,10 +320,18 @@ cite {
 
 /* ===== Print styles ===== */
 @media print {
+  @page { margin: 1.8cm 2cm; }
+
   body {
     font-size: 13px;
     color: black;
     background: white;
+  }
+
+  main {
+    max-width: none;
+    padding: 0;
+    margin: 0;
   }
 
   header,
@@ -331,7 +339,10 @@ cite {
   .show-verses-btn,
   .reveal-answer-btn,
   .leader-banner,
-  .back-link {
+  .back-link,
+  .more-passages-toggle,
+  .dedup-note,
+  .copyright {
     display: none !important;
   }
 
@@ -343,24 +354,48 @@ cite {
     display: block !important;
   }
 
-  .more-passages-toggle {
-    display: none;
-  }
+  /* Hide arrow glyph; keep label text */
+  .group-arrow { display: none; }
+  .group-label { font-weight: 600; color: black; }
 
-  /* Hide the toggle arrow chrome but keep label visible via group-toggle text */
   .group-toggle {
     pointer-events: none;
     font-weight: 600;
     color: black;
   }
 
-  .qa-card {
-    page-break-inside: avoid;
+  .question-number,
+  .answer-label {
+    color: black;
   }
 
-  .copyright {
-    font-size: 0.65rem;
-    color: #555;
+  /* Break inside passages, not mid-passage */
+  .citation { break-inside: avoid; }
+  .proof-group { break-inside: avoid; }
+
+  .qa-card {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #ccc;
+  }
+
+  .verses-section {
+    margin-top: 0.75rem;
+    padding-top: 0.5rem;
+  }
+
+  .answer-section {
+    margin-top: 0.75rem;
+    padding-top: 0.5rem;
+  }
+
+  .discussion-questions {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+  }
+
+  blockquote {
+    line-height: 1.5;
   }
 
   a[href]::after {
