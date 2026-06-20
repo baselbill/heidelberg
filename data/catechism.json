@@ -11,6 +11,7 @@
           {
             "reference": "Matt 27:46",
             "displayRange": "Matt 27:45-46",
+            "tier": "primary",
             "text": "",
             "copyright": ""
           }
@@ -22,12 +23,14 @@
           {
             "reference": "Isa 53:4-5",
             "displayRange": "Isa 53:3-6",
+            "tier": "primary",
             "text": "",
             "copyright": ""
           },
           {
             "reference": "Isa 53:10-12",
             "displayRange": "Isa 53:10-12",
+            "tier": "supplemental",
             "text": "",
             "copyright": ""
           }
@@ -39,18 +42,21 @@
           {
             "reference": "Rom 3:25",
             "displayRange": "Rom 3:23-26",
+            "tier": "primary",
             "text": "",
             "copyright": ""
           },
           {
             "reference": "1 John 2:2",
             "displayRange": "1 John 2:1-2",
+            "tier": "supplemental",
             "text": "",
             "copyright": ""
           },
           {
             "reference": "1 Tim 2:6",
             "displayRange": "1 Tim 2:5-6",
+            "tier": "supplemental",
             "text": "",
             "copyright": ""
           }
@@ -60,26 +66,30 @@
         "label": "Delivered from condemnation, gaining righteousness",
         "citations": [
           {
+            "reference": "1 Pet 2:24",
+            "displayRange": "1 Pet 2:23-25",
+            "tier": "primary",
+            "text": "",
+            "copyright": ""
+          },
+          {
             "reference": "2 Cor 5:21",
             "displayRange": "2 Cor 5:20-21",
+            "tier": "supplemental",
             "text": "",
             "copyright": ""
           },
           {
             "reference": "Gal 3:13",
             "displayRange": "Gal 3:13",
-            "text": "",
-            "copyright": ""
-          },
-          {
-            "reference": "1 Pet 2:24",
-            "displayRange": "1 Pet 2:23-25",
+            "tier": "supplemental",
             "text": "",
             "copyright": ""
           },
           {
             "reference": "1 Pet 3:18",
             "displayRange": "1 Pet 3:18",
+            "tier": "supplemental",
             "text": "",
             "copyright": ""
           }

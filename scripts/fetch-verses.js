@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // fetch-verses.js — populate scripture text in data/catechism.json
-// Usage: ESV_API_KEY=xxx node scripts/fetch-verses.js
+// Usage: ESV_API_KEY=xxx node scripts/fetch-verses.js [--force]
+//   --force  re-fetch all ranges even if text is already populated
 
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve, dirname } from 'path';
@@ -18,7 +19,15 @@ if (!ESV_API_KEY) {
   process.exit(1);
 }
 
-// Simple verse-count table (approximate, enough for 49% guard)
+const FORCE = process.argv.includes('--force');
+
+// Attribution stored with each citation for local records; not rendered in UI.
+const ESV_ATTRIBUTION =
+  'Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), ' +
+  'copyright © 2001 by Crossway, a publishing ministry of Good News Publishers. ' +
+  'Used by permission. All rights reserved.';
+
+// Complete 66-book verse-count table for the guardrail check.
 const BOOK_VERSE_COUNTS = {
   Gen: 1533, Exod: 1213, Lev: 859, Num: 1288, Deut: 959,
   Josh: 658, Judg: 618, Ruth: 85, '1 Sam': 810, '2 Sam': 695,
@@ -36,30 +45,62 @@ const BOOK_VERSE_COUNTS = {
   '1 John': 105, '2 John': 13, '3 John': 14, Jude: 25, Rev: 404,
 };
 
-function extractBookAbbr(reference) {
-  // Match things like "Matt", "1 Cor", "Isa", "Deut"
-  const match = reference.match(/^(\d\s)?[A-Za-z]+/);
-  return match ? match[0].trim() : null;
-}
-
+// Parse a displayRange string and return { book, verseCount }.
+// Handles: "Book ch:v", "Book ch:v-v2" (same chapter), "Book ch:v-ch2:v2" (cross-chapter).
+// All Lord's Day 15 ranges are same-chapter, giving exact counts.
 function parseVerseRange(displayRange) {
-  // Returns { book, verseCount } — rough count of verses in range
-  // Format: "Book ch:v-v" or "Book ch:v-ch:v"
-  const bookMatch = displayRange.match(/^(\d\s[A-Za-z]+|[A-Za-z]+)\s(\d+):(\d+)(?:-(\d+):?(\d+)?)?$/);
-  if (!bookMatch) return { book: null, verseCount: 1 };
-  const [, book, startCh, startV, endChOrV, endV] = bookMatch;
-  let verseCount = 1;
-  if (endV !== undefined) {
-    // cross-chapter: rough estimate
-    verseCount = parseInt(endV) - parseInt(startV) + 5;
-  } else if (endChOrV !== undefined) {
-    verseCount = parseInt(endChOrV) - parseInt(startV) + 1;
+  // Matches "1 John 2:1-2", "Isa 53:3-6", "Gal 3:13", "Luke 23:13-4:1" etc.
+  const re = /^(\d\s[A-Za-z]+|[A-Za-z]+)\s(\d+):(\d+)(?:-(\d+):(\d+)|-(\ d+))?$/;
+  // Use a simpler split-based parser for robustness.
+  const trimmed = displayRange.trim();
+
+  // Extract book: everything before the last " \d+:" sequence
+  const chapterStart = trimmed.search(/\s\d+:/);
+  if (chapterStart === -1) return { book: null, verseCount: 1 };
+  const book = trimmed.slice(0, chapterStart).trim();
+  const rest = trimmed.slice(chapterStart + 1); // "ch:v" or "ch:v-v2" or "ch:v-ch2:v2"
+
+  // rest examples: "53:3-6", "3:13", "23:13-16", "2:1-2"
+  const dashIdx = rest.indexOf('-');
+  if (dashIdx === -1) {
+    // Single verse: "ch:v"
+    return { book, verseCount: 1 };
   }
-  return { book: book.trim(), verseCount: Math.max(verseCount, 1) };
+
+  const startPart = rest.slice(0, dashIdx);   // "53:3"
+  const endPart   = rest.slice(dashIdx + 1);  // "6" or "24:1"
+
+  const startVerse = parseInt(startPart.split(':')[1], 10);
+
+  if (endPart.includes(':')) {
+    // Cross-chapter: "ch2:v2" — use a conservative estimate
+    const endVerse = parseInt(endPart.split(':')[1], 10);
+    const startChapter = parseInt(startPart.split(':')[0], 10);
+    const endChapter   = parseInt(endPart.split(':')[0], 10);
+    // Rough: assume ~26 verses per chapter for the bridging chapters
+    const verseCount = (endChapter - startChapter) * 26 + (endVerse - startVerse + 1);
+    return { book, verseCount: Math.max(verseCount, 1) };
+  } else {
+    // Same-chapter: endPart is just an end verse number
+    const endVerse = parseInt(endPart, 10);
+    return { book, verseCount: endVerse - startVerse + 1 };
+  }
 }
 
 async function fetchPassage(displayRange) {
-  const url = `https://api.esv.org/v3/passage/text/?q=${encodeURIComponent(displayRange)}&include-passage-references=false&include-verse-numbers=false&include-first-verse-numbers=false&include-footnotes=false&include-footnote-body=false&include-headings=false&include-short-copyright=false&include-copyright=true&line-length=0`;
+  const params = new URLSearchParams({
+    q: displayRange,
+    'include-passage-references': 'false',
+    'include-verse-numbers': 'false',
+    'include-first-verse-numbers': 'false',
+    'include-footnotes': 'false',
+    'include-footnote-body': 'false',
+    'include-headings': 'false',
+    'include-short-copyright': 'false',
+    'include-copyright': 'false',
+    'line-length': '0',
+  });
+  const url = `https://api.esv.org/v3/passage/text/?${params}`;
   const response = await fetch(url, {
     headers: { Authorization: `Token ${ESV_API_KEY}` },
   });
@@ -67,31 +108,20 @@ async function fetchPassage(displayRange) {
     throw new Error(`ESV API returned ${response.status} for "${displayRange}"`);
   }
   const data = await response.json();
-  const raw = (data.passages && data.passages[0]) || '';
-  if (!raw) {
+  const text = ((data.passages && data.passages[0]) || '').trim();
+  if (!text) {
     console.warn(`  Warning: empty passage returned for "${displayRange}"`);
-    return { text: '', copyright: '' };
   }
-
-  // Copyright statement begins with "Scripture quotations"
-  const copyrightMarker = 'Scripture quotations';
-  const idx = raw.indexOf(copyrightMarker);
-  let text, copyright;
-  if (idx !== -1) {
-    text = raw.slice(0, idx).trim();
-    copyright = raw.slice(idx).trim();
-  } else {
-    text = raw.trim();
-    copyright = '';
-  }
-  return { text, copyright };
+  return text;
 }
 
 async function main() {
-  console.log('Reading data/catechism.json …');
+  console.log(`Reading data/catechism.json …${FORCE ? ' (--force: will re-fetch all)' : ''}\n`);
   const catechism = JSON.parse(readFileSync(DATA_PATH, 'utf8'));
 
-  // Collect all citations keyed by displayRange
+  // Collect all citations keyed by displayRange.
+  // The map preserves insertion order, so Q37 citations are registered first —
+  // this is what powers the dedup "first seen" note in the UI.
   const rangeMap = new Map(); // displayRange -> [citation objects]
   for (const record of catechism) {
     for (const group of record.proofGroups) {
@@ -104,55 +134,71 @@ async function main() {
   }
 
   const uniqueRanges = [...rangeMap.keys()];
-  const toFetch = uniqueRanges.filter(r => rangeMap.get(r).some(c => c.text === ''));
 
-  console.log(`Found ${uniqueRanges.length} unique display ranges; ${toFetch.length} need fetching.\n`);
-
-  // Track fetched verses by book
-  const bookFetched = new Map(); // book abbr -> verse count
-
-  for (const range of toFetch) {
-    process.stdout.write(`Fetching "${range}" … `);
-    try {
-      const { text, copyright } = await fetchPassage(range);
-      // Write to all citation objects sharing this displayRange
-      for (const citation of rangeMap.get(range)) {
-        citation.text = text;
-        citation.copyright = copyright;
-      }
-      const { book, verseCount } = parseVerseRange(range);
-      if (book) {
-        bookFetched.set(book, (bookFetched.get(book) || 0) + verseCount);
-      }
-      console.log('done');
-    } catch (err) {
-      console.log(`FAILED: ${err.message}`);
-    }
-    // Small delay to be polite to the API
-    await new Promise(r => setTimeout(r, 200));
+  // --- Verse-count guardrail (runs over ALL unique ranges, not just unfetched ones) ---
+  const bookFetched = new Map(); // book -> verse count
+  for (const range of uniqueRanges) {
+    const { book, verseCount } = parseVerseRange(range);
+    if (book) bookFetched.set(book, (bookFetched.get(book) || 0) + verseCount);
   }
 
-  // Print summary table
-  let totalFetched = 0;
-  console.log('\n--- Verse fetch summary ---');
-  console.log('Book          | Verses fetched | % of book');
-  console.log('------------- | -------------- | ---------');
+  let totalVerses = 0;
+  const guardrailRows = [];
+  let guardrailFailed = false;
+
   for (const [book, count] of [...bookFetched.entries()].sort()) {
-    totalFetched += count;
-    const total = BOOK_VERSE_COUNTS[book] || 0;
-    const pct = total ? ((count / total) * 100).toFixed(1) : 'N/A';
-    console.log(`${book.padEnd(13)} | ${String(count).padEnd(14)} | ${pct}%`);
-
-    if (total && count / total >= 0.49) {
-      console.error(`\nError: Fetched ${pct}% of ${book} — exceeds 49% limit.`);
-      process.exit(1);
-    }
+    totalVerses += count;
+    const bookTotal = BOOK_VERSE_COUNTS[book] || 0;
+    const pct = bookTotal ? ((count / bookTotal) * 100).toFixed(1) : 'N/A';
+    const status = bookTotal && count / bookTotal >= 0.49 ? 'FAIL >' : 'ok';
+    if (status.startsWith('FAIL')) guardrailFailed = true;
+    guardrailRows.push({ book, count, pct, status });
   }
-  console.log(`\nTotal verses fetched across all books: ${totalFetched}`);
 
-  if (totalFetched >= 490) {
-    console.error('\nError: Total verses fetched (${totalFetched}) exceeds limit of 490.');
+  // Print the table before fetching so a guardrail failure blocks the run early.
+  console.log('--- Verse-count check (all unique ranges in JSON) ---');
+  console.log('Book          | Verses | % of book | Status');
+  console.log('------------- | ------ | --------- | ------');
+  for (const r of guardrailRows) {
+    console.log(
+      `${r.book.padEnd(13)} | ${String(r.count).padEnd(6)} | ${String(r.pct + '%').padEnd(9)} | ${r.status}`
+    );
+  }
+  console.log(`\nTotal distinct verses in JSON: ${totalVerses}`);
+
+  if (guardrailFailed) {
+    console.error('\nError: one or more books exceed the 49%-of-book limit. Aborting.');
     process.exit(1);
+  }
+  if (totalVerses >= 490) {
+    console.error(`\nError: ${totalVerses} verses in JSON — approaching the 500-verse limit. Aborting.`);
+    process.exit(1);
+  }
+  console.log('Guardrail: OK\n');
+
+  // --- Fetch ---
+  const toFetch = FORCE
+    ? uniqueRanges
+    : uniqueRanges.filter(r => rangeMap.get(r).some(c => !c.text));
+
+  if (toFetch.length === 0) {
+    console.log('All passages already populated. Run with --force to re-fetch.\n');
+  } else {
+    console.log(`Fetching ${toFetch.length} of ${uniqueRanges.length} unique ranges …\n`);
+    for (const range of toFetch) {
+      process.stdout.write(`  Fetching "${range}" … `);
+      try {
+        const text = await fetchPassage(range);
+        for (const citation of rangeMap.get(range)) {
+          citation.text = text;
+          citation.copyright = ESV_ATTRIBUTION;
+        }
+        console.log('done');
+      } catch (err) {
+        console.log(`FAILED: ${err.message}`);
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
   }
 
   console.log('\nWriting updated data/catechism.json …');

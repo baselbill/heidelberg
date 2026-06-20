@@ -8,7 +8,7 @@ const cardState = {};
 
 function getCardState(qNumber) {
   if (!cardState[qNumber]) {
-    cardState[qNumber] = { versesShown: false, answerShown: false, groupsShown: {} };
+    cardState[qNumber] = { versesShown: false, answerShown: false, groupsShown: {}, suppShown: {} };
   }
   return cardState[qNumber];
 }
@@ -48,17 +48,14 @@ let catechismData = [];
 async function init() {
   catechismData = await fetch('data/catechism.json').then(r => r.json());
 
-  // Set up leader toggle
   const btn = document.getElementById('leader-toggle');
   btn.setAttribute('aria-pressed', String(isLeaderMode()));
   btn.addEventListener('click', () => {
-    const next = !isLeaderMode();
-    setLeaderMode(next);
-    route(); // re-render current view
+    setLeaderMode(!isLeaderMode());
+    route();
   });
 
   renderLeaderBanner(isLeaderMode());
-
   window.addEventListener('hashchange', route);
   route();
 }
@@ -69,11 +66,8 @@ function route() {
     renderLanding();
   } else {
     const m = hash.match(/^#ld-(\d+)$/);
-    if (m) {
-      renderLordsDay(parseInt(m[1], 10));
-    } else {
-      renderLanding();
-    }
+    if (m) renderLordsDay(parseInt(m[1], 10));
+    else renderLanding();
   }
 }
 
@@ -82,12 +76,14 @@ function route() {
 function renderLanding() {
   const app = document.getElementById('app');
 
-  // Group by lordsDay
   const days = new Map();
   for (const record of catechismData) {
     if (!days.has(record.lordsDay)) days.set(record.lordsDay, []);
     days.get(record.lordsDay).push(record);
   }
+
+  const heading = document.createElement('h1');
+  heading.textContent = 'Heidelberg Catechism';
 
   const ul = document.createElement('ul');
   ul.className = 'lords-day-list';
@@ -110,9 +106,6 @@ function renderLanding() {
     li.appendChild(a);
     ul.appendChild(li);
   }
-
-  const heading = document.createElement('h1');
-  heading.textContent = 'Heidelberg Catechism';
 
   app.innerHTML = '';
   app.appendChild(heading);
@@ -138,18 +131,30 @@ function renderLordsDay(n) {
   heading.textContent = `Lord's Day ${n}`;
   app.appendChild(heading);
 
+  // Build a map of displayRange -> first qNumber in this Lord's Day (in record order).
+  // Used to annotate repeated windows with "(also read under Q{n})".
+  const firstSeen = new Map();
   for (const record of records) {
-    app.appendChild(buildQuestionCard(record));
+    for (const group of record.proofGroups) {
+      for (const citation of group.citations) {
+        if (!firstSeen.has(citation.displayRange)) {
+          firstSeen.set(citation.displayRange, record.qNumber);
+        }
+      }
+    }
   }
 
-  // Discussion questions section
+  for (const record of records) {
+    app.appendChild(buildQuestionCard(record, firstSeen));
+  }
+
   const dq = buildDiscussionQuestions(n);
   if (dq) app.appendChild(dq);
 }
 
 // ---------- Question card ----------
 
-function buildQuestionCard(record) {
+function buildQuestionCard(record, firstSeen) {
   const leader = isLeaderMode();
   const state = getCardState(record.qNumber);
 
@@ -157,13 +162,11 @@ function buildQuestionCard(record) {
   article.className = 'qa-card';
   article.dataset.q = record.qNumber;
 
-  // Question number
   const qNum = document.createElement('h2');
   qNum.className = 'question-number';
   qNum.textContent = `Question ${record.qNumber}`;
   article.appendChild(qNum);
 
-  // Question text
   const qText = document.createElement('p');
   qText.className = 'question-text';
   qText.textContent = record.question;
@@ -180,9 +183,10 @@ function buildQuestionCard(record) {
     groupDiv.className = 'proof-group';
     groupDiv.dataset.groupIndex = i;
 
+    const groupOpen = leader || !!state.groupsShown[i];
+
     const toggleBtn = document.createElement('button');
     toggleBtn.className = 'group-toggle';
-    const groupOpen = leader || !!state.groupsShown[i];
     toggleBtn.textContent = `${group.label} ${groupOpen ? '▾' : '▸'}`;
     toggleBtn.setAttribute('aria-expanded', String(groupOpen));
 
@@ -190,34 +194,47 @@ function buildQuestionCard(record) {
     groupContent.className = 'group-content';
     if (!groupOpen) groupContent.hidden = true;
 
-    for (const citation of group.citations) {
-      const citDiv = document.createElement('div');
-      citDiv.className = 'citation';
+    // Split citations by tier
+    const primary = group.citations.filter(c => (c.tier || 'primary') === 'primary');
+    const supplemental = group.citations.filter(c => c.tier === 'supplemental');
 
-      const bq = document.createElement('blockquote');
-      if (citation.text) {
-        bq.textContent = citation.text;
-      } else {
-        const placeholder = document.createElement('span');
-        placeholder.className = 'placeholder-text';
-        placeholder.textContent = '[Scripture text not yet fetched — run scripts/fetch-verses.js]';
-        bq.appendChild(placeholder);
+    for (const citation of primary) {
+      groupContent.appendChild(buildCitation(citation, record.qNumber, firstSeen));
+    }
+
+    // "More passages" sub-toggle for supplemental citations
+    if (supplemental.length > 0) {
+      const suppOpen = leader || !!state.suppShown[i];
+
+      const suppGroup = document.createElement('div');
+      suppGroup.className = 'supplemental-group';
+
+      const suppToggle = document.createElement('button');
+      suppToggle.className = 'more-passages-toggle';
+      suppToggle.textContent = suppOpen
+        ? `▾ Fewer passages`
+        : `▸ More passages (${supplemental.length})`;
+      suppToggle.setAttribute('aria-expanded', String(suppOpen));
+
+      const suppContent = document.createElement('div');
+      suppContent.className = 'supplemental-content';
+      if (!suppOpen) suppContent.hidden = true;
+
+      for (const citation of supplemental) {
+        suppContent.appendChild(buildCitation(citation, record.qNumber, firstSeen));
       }
 
-      const cite = document.createElement('cite');
-      cite.textContent = citation.reference;
+      suppToggle.addEventListener('click', () => {
+        const nowOpen = suppContent.hidden;
+        suppContent.hidden = !nowOpen;
+        suppToggle.textContent = nowOpen ? '▾ Fewer passages' : `▸ More passages (${supplemental.length})`;
+        suppToggle.setAttribute('aria-expanded', String(nowOpen));
+        getCardState(record.qNumber).suppShown[i] = nowOpen;
+      });
 
-      citDiv.appendChild(bq);
-      citDiv.appendChild(cite);
-
-      if (citation.copyright) {
-        const cp = document.createElement('p');
-        cp.className = 'copyright';
-        cp.textContent = citation.copyright;
-        citDiv.appendChild(cp);
-      }
-
-      groupContent.appendChild(citDiv);
+      suppGroup.appendChild(suppToggle);
+      suppGroup.appendChild(suppContent);
+      groupContent.appendChild(suppGroup);
     }
 
     toggleBtn.addEventListener('click', () => {
@@ -271,14 +288,10 @@ function buildQuestionCard(record) {
   const revealAnswerBtn = document.createElement('button');
   revealAnswerBtn.className = 'reveal-answer-btn';
   revealAnswerBtn.textContent = 'Reveal answer';
-
-  // Show the reveal-answer button only after verses are shown (or skip if leader)
   if (leader || state.answerShown) {
     revealAnswerBtn.hidden = true;
-  } else if (state.versesShown) {
-    revealAnswerBtn.hidden = false;
   } else {
-    revealAnswerBtn.hidden = true;
+    revealAnswerBtn.hidden = !state.versesShown;
   }
 
   revealAnswerBtn.addEventListener('click', () => {
@@ -290,6 +303,40 @@ function buildQuestionCard(record) {
   article.appendChild(revealAnswerBtn);
 
   return article;
+}
+
+// ---------- Citation element ----------
+
+function buildCitation(citation, currentQ, firstSeen) {
+  const citDiv = document.createElement('div');
+  citDiv.className = 'citation';
+
+  const bq = document.createElement('blockquote');
+  if (citation.text) {
+    bq.textContent = citation.text;
+  } else {
+    const ph = document.createElement('span');
+    ph.className = 'placeholder-text';
+    ph.textContent = '[Scripture text not yet fetched — run scripts/fetch-verses.js]';
+    bq.appendChild(ph);
+  }
+
+  const cite = document.createElement('cite');
+  cite.textContent = citation.reference;
+
+  // Dedup note: if this displayRange was first seen in a different question, say so quietly.
+  const firstQ = firstSeen.get(citation.displayRange);
+  if (firstQ !== undefined && firstQ !== currentQ) {
+    const note = document.createElement('span');
+    note.className = 'dedup-note';
+    note.textContent = ` (also read under Q${firstQ})`;
+    cite.appendChild(note);
+  }
+
+  citDiv.appendChild(bq);
+  citDiv.appendChild(cite);
+
+  return citDiv;
 }
 
 // ---------- Discussion questions ----------

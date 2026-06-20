@@ -273,6 +273,44 @@ cite {
   font-size: 1rem;
 }
 
+/* ===== Supplemental passages toggle ===== */
+.supplemental-group {
+  margin-top: 0.75rem;
+}
+
+.more-passages-toggle {
+  background: none;
+  border: none;
+  color: #8a7c6e;
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0;
+  font-family: Georgia, serif;
+}
+
+.more-passages-toggle:hover {
+  color: #7c3d12;
+}
+
+.more-passages-toggle:focus {
+  outline: 2px solid #7c3d12;
+  outline-offset: 2px;
+}
+
+.supplemental-content {
+  margin-top: 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 2px dashed #d6cfc4;
+}
+
+/* ===== Dedup note ===== */
+.dedup-note {
+  color: #9a8f84;
+  font-size: 0.78rem;
+  font-style: italic;
+  margin-left: 0.25em;
+}
+
 /* ===== Placeholder text ===== */
 .placeholder-text {
   color: #999;
@@ -300,8 +338,13 @@ cite {
   /* Reveal all hidden sections */
   .verses-section[hidden],
   .group-content[hidden],
-  .answer-section[hidden] {
+  .answer-section[hidden],
+  .supplemental-content[hidden] {
     display: block !important;
+  }
+
+  .more-passages-toggle {
+    display: none;
   }
 
   /* Hide the toggle arrow chrome but keep label visible via group-toggle text */
