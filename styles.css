@@ -1,0 +1,331 @@
+/* Heidelberg Catechism Study — styles.css */
+
+/* ===== Base ===== */
+body {
+  font-family: Georgia, serif;
+  font-size: 18px;
+  line-height: 1.75;
+  background: #faf9f6;
+  color: #1c1917;
+  margin: 0;
+  padding: 0;
+}
+
+main {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem;
+}
+
+h1 {
+  font-size: 1.6rem;
+  margin-top: 2rem;
+  margin-bottom: 1.25rem;
+}
+
+/* ===== Header / Nav ===== */
+header nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid #e5e0d8;
+}
+
+.nav-home {
+  text-decoration: none;
+  font-size: 1rem;
+  color: #1c1917;
+  font-weight: 600;
+}
+
+.nav-home:hover {
+  text-decoration: underline;
+}
+
+#leader-toggle {
+  background: #7c3d12;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+#leader-toggle[aria-pressed="true"] {
+  background: #3d1e09;
+}
+
+#leader-toggle:focus {
+  outline: 2px solid #7c3d12;
+  outline-offset: 2px;
+}
+
+/* ===== Leader banner ===== */
+.leader-banner {
+  background: #7c3d12;
+  color: white;
+  text-align: center;
+  padding: 0.4rem;
+  font-size: 0.85rem;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* ===== Landing — Lord's Day list ===== */
+.lords-day-list {
+  list-style: none;
+  padding: 0;
+  margin: 2rem 0;
+}
+
+.lords-day-card {
+  display: block;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid #d6cfc4;
+  border-radius: 6px;
+  text-decoration: none;
+  color: #1c1917;
+  background: white;
+  transition: background 0.15s;
+}
+
+.lords-day-card:hover {
+  background: #f0ebe2;
+}
+
+.lords-day-sub {
+  font-size: 0.9rem;
+  color: #5a534b;
+}
+
+.back-link {
+  margin-top: 1.5rem;
+  margin-bottom: 0;
+}
+
+.back-link a {
+  color: #7c3d12;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.back-link a:hover {
+  text-decoration: underline;
+}
+
+/* ===== Q&A Card ===== */
+.qa-card {
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #e5e0d8;
+}
+
+.question-number {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7c3d12;
+  margin-bottom: 0.25rem;
+}
+
+.question-text {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-top: 0;
+}
+
+/* ===== Buttons ===== */
+.show-verses-btn,
+.reveal-answer-btn {
+  background: transparent;
+  border: 1px solid #7c3d12;
+  color: #7c3d12;
+  padding: 0.5rem 1.1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+  font-family: Georgia, serif;
+}
+
+.show-verses-btn:hover,
+.reveal-answer-btn:hover {
+  background: #7c3d12;
+  color: white;
+}
+
+.show-verses-btn:focus,
+.reveal-answer-btn:focus {
+  outline: 2px solid #7c3d12;
+  outline-offset: 2px;
+}
+
+/* ===== Verses section ===== */
+.verses-section {
+  margin-top: 1.5rem;
+  border-top: 1px solid #e5e0d8;
+  padding-top: 1rem;
+}
+
+.proof-group {
+  margin-bottom: 1.25rem;
+}
+
+.group-toggle {
+  background: none;
+  border: none;
+  color: #7c3d12;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+  font-family: Georgia, serif;
+}
+
+.group-toggle:hover {
+  text-decoration: underline;
+}
+
+.group-toggle:focus {
+  outline: 2px solid #7c3d12;
+  outline-offset: 2px;
+}
+
+.group-content {
+  margin-top: 0.75rem;
+  padding-left: 1rem;
+  border-left: 2px solid #e5e0d8;
+}
+
+.citation {
+  margin-bottom: 1.25rem;
+}
+
+blockquote {
+  margin: 0 0 0.5rem 0;
+  padding: 0;
+  font-style: italic;
+  line-height: 1.7;
+}
+
+cite {
+  font-style: normal;
+  font-size: 0.85rem;
+  color: #5a534b;
+  display: block;
+}
+
+.copyright {
+  font-size: 0.7rem;
+  color: #8a8078;
+  margin-top: 0.75rem;
+  font-style: normal;
+}
+
+/* ===== Answer section ===== */
+.answer-section {
+  margin-top: 1.5rem;
+  border-top: 1px solid #e5e0d8;
+  padding-top: 1rem;
+}
+
+.answer-label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7c3d12;
+  margin-bottom: 0.25rem;
+}
+
+.answer-text {
+  font-style: italic;
+  font-size: 1.05rem;
+  line-height: 1.8;
+}
+
+/* ===== Discussion questions ===== */
+.discussion-questions {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #d6cfc4;
+}
+
+.discussion-questions h2 {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7c3d12;
+  margin-bottom: 1rem;
+}
+
+.discussion-questions ol {
+  padding-left: 1.5rem;
+}
+
+.discussion-questions li {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+/* ===== Placeholder text ===== */
+.placeholder-text {
+  color: #999;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+/* ===== Print styles ===== */
+@media print {
+  body {
+    font-size: 13px;
+    color: black;
+    background: white;
+  }
+
+  header,
+  #leader-toggle,
+  .show-verses-btn,
+  .reveal-answer-btn,
+  .leader-banner,
+  .back-link {
+    display: none !important;
+  }
+
+  /* Reveal all hidden sections */
+  .verses-section[hidden],
+  .group-content[hidden],
+  .answer-section[hidden] {
+    display: block !important;
+  }
+
+  /* Hide the toggle arrow chrome but keep label visible via group-toggle text */
+  .group-toggle {
+    pointer-events: none;
+    font-weight: 600;
+    color: black;
+  }
+
+  .qa-card {
+    page-break-inside: avoid;
+  }
+
+  .copyright {
+    font-size: 0.65rem;
+    color: #555;
+  }
+
+  a[href]::after {
+    content: none;
+  }
+
+  .lords-day-card {
+    border: none;
+    padding: 0.25rem 0;
+  }
+}

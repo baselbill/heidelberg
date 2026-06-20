@@ -1,0 +1,26 @@
+MIT License (app source code only)
+
+Copyright (c) 2026
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of the HTML, CSS, and JavaScript source files in this repository (excluding
+catechism text and scripture quotations), to deal in those files without
+restriction, including without limitation the rights to use, copy, modify,
+merge, publish, distribute, sublicense, and/or sell copies of the Software,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+
+---
+
+CATECHISM TEXT: The Heidelberg Catechism text in data/catechism.json is
+© 2011 Faith Alive Christian Resources and is NOT covered by the MIT License
+above. It is used under the study/education/worship exception. Written
+permission from Faith Alive is required for broader distribution.
+
+SCRIPTURE TEXT: ESV® Bible text is © 2001 Crossway and is NOT covered by
+the MIT License above. It is used under Crossway's non-commercial API terms.
+It may not be reproduced under a Creative Commons license.
